@@ -29,35 +29,24 @@ pipeline {
         stage('Create Virtual Environment') {
 
             steps {
-
-                dir('Automation') {
-                    bat 'py -m venv %VENV%'
-                }
-
+                bat 'py -m venv %VENV%'
             }
         }
 
         stage('Install Dependencies') {
 
             steps {
-
-                dir('Automation') {
-                    bat '.\\%VENV%\\Scripts\\python -m pip install --upgrade pip'
-
-                    bat '.\\%VENV%\\Scripts\\pip install -r requirements.txt'
-                }
-
+                bat '.\\%VENV%\\Scripts\\python -m pip install --upgrade pip'
+                bat '.\\%VENV%\\Scripts\\pip install -r requirements.txt'
             }
         }
 
         stage('Start Selenium Grid') {
 
             steps {
-
-                dir('Automation') {
-                    bat 'docker compose up -d'
-                }
-
+                bat 'docker compose up -d'
+                bat 'docker compose ps'
+                bat 'powershell -NoProfile -Command "for ($i=0; $i -lt 30; $i++) { try { $resp = Invoke-WebRequest -Uri http://localhost:4444/status -UseBasicParsing -TimeoutSec 5; if ($resp.StatusCode -eq 200) { Write-Host \"Selenium Grid ready\"; exit 0 } } catch { Write-Host \"Waiting for Selenium Grid...\" }; Start-Sleep -Seconds 2 }; throw \"Selenium Grid did not become ready on localhost:4444\";"'
             }
         }
 
@@ -65,12 +54,10 @@ pipeline {
 
             steps {
                 script {
-                    dir('Automation') {
-                        def status = bat(returnStatus: true, script: '.\\%VENV%\\Scripts\\pytest -n 2 --alluredir=reports/allure-results --html=reports/report.html --self-contained-html tests')
-                        if (status != 0) {
-                            currentBuild.result = 'UNSTABLE'
-                            echo "Pytest exited with code ${status}. Continuing to report publishing."
-                        }
+                    def status = bat(returnStatus: true, script: '.\\%VENV%\\Scripts\\pytest -c pytest.ini -n 2 --alluredir=reports/allure-results --html=reports/report.html --self-contained-html tests')
+                    if (status != 0) {
+                        currentBuild.result = 'UNSTABLE'
+                        echo "Pytest exited with code ${status}. Continuing to report publishing."
                     }
                 }
             }
@@ -79,11 +66,7 @@ pipeline {
         stage('Stop Selenium Grid') {
 
             steps {
-
-                dir('Automation') {
-                    bat 'docker compose down'
-                }
-
+                bat 'docker compose down'
             }
         }
 
@@ -91,7 +74,7 @@ pipeline {
 
             steps {
 
-                allure includeProperties: false, jdk: '', results: [[path: 'Automation/reports/allure-results']]
+                allure includeProperties: false, jdk: '', results: [[path: 'reports/allure-results']]
 
             }
         }
@@ -101,13 +84,13 @@ pipeline {
 
         always {
 
-            archiveArtifacts artifacts: 'Automation/reports/*', fingerprint: true
+            archiveArtifacts artifacts: 'reports/*', fingerprint: true
 
             publishHTML([
                 allowMissing: true,
                 alwaysLinkToLastBuild: true,
                 keepAll: true,
-                reportDir: 'Automation/reports',
+                reportDir: 'reports',
                 reportFiles: 'report.html',
                 reportName: 'Automation Test Report'
             ])
