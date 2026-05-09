@@ -7,6 +7,10 @@ pipeline {
         VENV = "venv"
         EMAIL = "harsha21@gmail.com"
         PASSWORD = "Harsha@21"
+        LONGCAT_API_KEY="ak_2Xo3kg5Ky8em3Fn1IY7qp9P59gV0W"
+        LONGCAT_BASE_URL="https://api.longcat.chat/openai"
+
+ 
 
     }
 
