@@ -1,0 +1,124 @@
+pipeline {
+
+    agent any
+
+    environment {
+
+        VENV = "venv"
+        EMAIL = "harsha21@gmail.com"
+        PASSWORD = "Harsha@21"
+
+    }
+
+    stages {
+
+        stage('Clone Repository') {
+
+            steps {
+
+                git branch: 'main',
+                url: 'https://github.com/HarshithRaoPalle/notes-automation-Capstone-Project.git'
+
+            }
+        }
+
+        stage('Create Virtual Environment') {
+
+            steps {
+
+                dir('Automation') {
+                    bat 'py -m venv %VENV%'
+                }
+
+            }
+        }
+
+        stage('Install Dependencies') {
+
+            steps {
+
+                dir('Automation') {
+                    bat '.\\%VENV%\\Scripts\\python -m pip install --upgrade pip'
+
+                    bat '.\\%VENV%\\Scripts\\pip install -r requirements.txt'
+                }
+
+            }
+        }
+
+        stage('Start Selenium Grid') {
+
+            steps {
+
+                dir('Automation') {
+                    bat 'docker compose up -d'
+                }
+
+            }
+        }
+
+        stage('Run Parallel Tests') {
+
+            steps {
+                script {
+                    dir('Automation') {
+                        def status = bat(returnStatus: true, script: '.\\%VENV%\\Scripts\\pytest -n 2 --alluredir=reports/allure-results --html=reports/report.html --self-contained-html tests')
+                        if (status != 0) {
+                            currentBuild.result = 'UNSTABLE'
+                            echo "Pytest exited with code ${status}. Continuing to report publishing."
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Stop Selenium Grid') {
+
+            steps {
+
+                dir('Automation') {
+                    bat 'docker compose down'
+                }
+
+            }
+        }
+
+        stage('Publish Allure Results') {
+
+            steps {
+
+                allure includeProperties: false, jdk: '', results: [[path: 'Automation/reports/allure-results']]
+
+            }
+        }
+    }
+
+    post {
+
+        always {
+
+            archiveArtifacts artifacts: 'Automation/reports/*', fingerprint: true
+
+            publishHTML([
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'Automation/reports',
+                reportFiles: 'report.html',
+                reportName: 'Automation Test Report'
+            ])
+        }
+
+        success {
+
+            echo 'Pipeline executed successfully'
+
+        }
+
+        failure {
+
+            echo 'Pipeline execution failed'
+
+        }
+    }
+}

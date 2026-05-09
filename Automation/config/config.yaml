@@ -1,0 +1,9 @@
+base_url: "https://practice.expandtesting.com/notes/app"
+api_url: "https://practice.expandtesting.com/notes/api"
+
+browser: "chrome"
+timeout: 25
+
+execution: "local"
+
+grid_url: "http://localhost:4444/wd/hub"
