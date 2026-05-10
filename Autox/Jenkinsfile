@@ -28,7 +28,7 @@ pipeline {
 
             steps {
 
-                dir('Automation') {
+                dir('Autox') {
                     bat 'py -m venv %VENV%'
                 }
 
