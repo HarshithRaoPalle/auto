@@ -1,0 +1,126 @@
+pipeline {
+
+    agent any
+
+    environment {
+
+        VENV = "venv"
+        EMAIL = "harsha21@gmail.com"
+        PASSWORD = "Harsha@21"
+        LONGCAT_API_KEY="ak_2Xo3kg5Ky8em3Fn1IY7qp9P59gV0W"
+        LONGCAT_BASE_URL="https://api.longcat.chat/openai"
+
+    }
+
+    stages {
+
+        stage('Clone Repository') {
+
+            steps {
+
+                git branch: 'main',
+                url: 'https://github.com/HarshithRaoPalle/notes-automation-Capstone-Project.git'
+
+            }
+        }
+
+        stage('Create Virtual Environment') {
+
+            steps {
+
+                dir('Automation') {
+                    bat 'py -m venv %VENV%'
+                }
+
+            }
+        }
+
+        stage('Install Dependencies') {
+
+            steps {
+
+                dir('Autox') {
+                    bat '.\\%VENV%\\Scripts\\python -m pip install --upgrade pip'
+
+                    bat '.\\%VENV%\\Scripts\\pip install -r requirements.txt'
+                }
+
+            }
+        }
+
+        stage('Start Selenium Grid') {
+
+            steps {
+
+                dir('Autox') {
+                    bat 'docker compose up -d'
+                }
+
+            }
+        }
+
+        stage('Run Parallel Tests') {
+
+            steps {
+                script {
+                    dir('Autox') {
+                        def status = bat(returnStatus: true, script: '.\\%VENV%\\Scripts\\pytest -n 2 --alluredir=reports/allure-results --html=reports/report.html --self-contained-html tests')
+                        if (status != 0) {
+                            currentBuild.result = 'UNSTABLE'
+                            echo "Pytest exited with code ${status}. Continuing to report publishing."
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Stop Selenium Grid') {
+
+            steps {
+
+                dir('Autox') {
+                    bat 'docker compose down'
+                }
+
+            }
+        }
+
+        stage('Publish Allure Results') {
+
+            steps {
+
+                allure includeProperties: false, jdk: '', results: [[path: 'Autox/reports/allure-results']]
+
+            }
+        }
+    }
+
+    post {
+
+        always {
+
+            archiveArtifacts artifacts: 'Autox/reports/*', fingerprint: true
+
+            publishHTML([
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'Autox/reports',
+                reportFiles: 'report.html',
+                reportName: 'Automation Test Report'
+            ])
+        }
+
+        success {
+
+            echo 'Pipeline executed successfully'
+
+        }
+
+        failure {
+
+            echo 'Pipeline execution failed'
+
+        }
+    }
+}
