@@ -19,7 +19,7 @@ pipeline {
             steps {
 
                 git branch: 'main',
-                url: 'https://github.com/HarshithRaoPalle/notes-automation-Capstone-Project.git'
+                url: 'https://github.com/HarshithRaoPalle/auto.git'
 
             }
         }
